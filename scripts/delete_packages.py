@@ -27,7 +27,7 @@ import sys
 import json
 import subprocess
 import argparse
-from channel_config import load_channel_config, release_tag_from_mhl
+from channel_config import load_channel_config, release_tag_from_mhl, is_channel_configured
 
 
 channel_cfg = load_channel_config()
@@ -109,6 +109,10 @@ def main():
     if not args.list and not args.pattern and not args.delete_release:
         parser.print_help()
         return 1
+
+    if not is_channel_configured():
+        print("channel.yaml has not been configured yet. Skipping.")
+        return 0
 
     try:
         release_tags = list_all_releases()

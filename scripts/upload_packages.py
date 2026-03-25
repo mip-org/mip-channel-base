@@ -16,7 +16,7 @@ import os
 import sys
 import subprocess
 import argparse
-from channel_config import load_channel_config, release_tag_from_mhl
+from channel_config import load_channel_config, release_tag_from_mhl, is_channel_configured
 
 
 class PackageUploader:
@@ -166,6 +166,10 @@ def main():
     )
 
     args = parser.parse_args()
+
+    if not is_channel_configured():
+        print("channel.yaml has not been configured yet. Skipping upload.")
+        return 0
 
     uploader = PackageUploader(
         dry_run=args.dry_run,

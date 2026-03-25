@@ -15,6 +15,12 @@ def load_channel_config():
         return yaml.safe_load(f)
 
 
+def is_channel_configured():
+    """Check whether channel.yaml has been configured (not still placeholders)."""
+    cfg = load_channel_config()
+    return cfg.get('github_repo') not in (None, 'OWNER/REPO')
+
+
 def get_base_url(release_tag):
     """Get the download base URL for a given release tag (name-version)."""
     cfg = load_channel_config()

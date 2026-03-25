@@ -20,7 +20,7 @@ import argparse
 import subprocess
 import tempfile
 from datetime import datetime
-from channel_config import load_channel_config, get_base_url
+from channel_config import load_channel_config, get_base_url, is_channel_configured
 
 
 def _version_sort_key(version_str):
@@ -385,6 +385,10 @@ def main():
     )
 
     args = parser.parse_args()
+
+    if not is_channel_configured():
+        print("channel.yaml has not been configured yet. Skipping index assembly.")
+        return 0
 
     assembler = IndexAssembler(dry_run=args.dry_run)
 
