@@ -4,8 +4,8 @@ This repo is a [MIP](https://mip.sh) package channel. It hosts MATLAB packages a
 
 ## Creating your own channel
 
-1. **Fork** [mip-org/mip-channel-base](https://github.com/mip-org/mip-channel-base).
-2. **Edit `channel.yaml`** — set `channel` to a short name and `github_repo` to your `owner/repo`.
+1. **Fork** [mip-org/mip-channel-base](https://github.com/mip-org/mip-channel-base) and name it `mip-<channel_name>` (e.g., `mip-mylab`). The repo name must match the channel name.
+2. **Edit `channel.yaml`** — set `channel` to your channel name and `github_repo` to your `owner/mip-<channel_name>`.
 3. **Enable GitHub Pages** — go to Settings > Pages and set source to "GitHub Actions".
 4. **Add packages** — create directories under `packages/` (see below).
 5. **Push to `main`** — the CI workflow will build, upload, and index your packages automatically.
