@@ -4,7 +4,7 @@ This repo is a [MIP](https://mip.sh) package channel. It hosts MATLAB packages a
 
 ## Creating your own channel
 
-1. **Create from template** — click "Use this template" on [mip-org/mip-channel-base](https://github.com/mip-org/mip-channel-base) and name the new repo `mip-<channel_name>` (e.g., `mip-mylab`). The repo name must match the channel name.
+1. **Create from template** — click "Use this template" on [mip-org/mip-channel-template](https://github.com/mip-org/mip-channel-template) and name the new repo `mip-<channel_name>` (e.g., `mip-mylab`). The repo name must match the channel name.
 2. **Enable GitHub Pages** — go to Settings > Pages and set source to "GitHub Actions".
 4. **Edit `channel.yaml`** — set `channel` to your channel name and `github_repo` to your `owner/mip-<channel_name>`.
 5. **Add packages** — create directories under `packages/` (see below).
@@ -44,7 +44,7 @@ To pull in the latest infrastructure (scripts, workflows) from the base repo:
 
 ```bash
 # First time only:
-git remote add base https://github.com/mip-org/mip-channel-base.git
+git remote add base https://github.com/mip-org/mip-channel-template.git
 
 # To update:
 git fetch base
