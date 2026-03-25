@@ -67,10 +67,14 @@ The MATLAB client (`mip install <package>`) fetches the index from GitHub Pages 
 
 ## Using this channel in MATLAB
 
-```matlab
-% Add this channel
-mip channel add https://<owner>.github.io/<repo>/index.json
+Channel names map to index URLs by convention: a channel named `foo` resolves to `https://mip-org.github.io/mip-foo/index.json`.
 
-% Install a package
-mip install <package_name>
+```matlab
+% Install a package from your channel
+mip install --channel <channel_name> <package_name>
+
+% List available packages on your channel
+mip avail --channel <channel_name>
 ```
+
+For channels hosted outside the `mip-org` GitHub organization, users would need to point at the GitHub Pages URL directly (see [mip-package-manager](https://github.com/mip-org/mip-package-manager) for details).
