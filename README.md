@@ -1,6 +1,6 @@
 # MIP Channel
 
-This repo is a [MIP](https://github.com/mip-org/mip-package-manager) package channel. It hosts MATLAB packages as GitHub Release assets and publishes a package index via GitHub Pages.
+This repo is a [MIP](https://mip.sh) package channel. It hosts MATLAB packages as GitHub Release assets and publishes a package index via GitHub Pages.
 
 ## Creating your own channel
 
@@ -9,8 +9,6 @@ This repo is a [MIP](https://github.com/mip-org/mip-package-manager) package cha
 3. **Enable GitHub Pages** — go to Settings > Pages and set source to "GitHub Actions".
 4. **Add packages** — create directories under `packages/` (see below).
 5. **Push to `main`** — the CI workflow will build, upload, and index your packages automatically.
-
-No cloud storage credentials are needed. Packages are stored as GitHub Release assets and the index is served via GitHub Pages.
 
 ## Adding a package
 
@@ -47,7 +45,7 @@ To pull in the latest infrastructure (scripts, workflows) from the base repo:
 ```bash
 git remote add upstream https://github.com/mip-org/mip-channel-base.git
 git fetch upstream
-git merge upstream/main --allow-unrelated-histories
+git merge upstream/main
 ```
 
 Your `channel.yaml`, `packages/`, and `README.md` won't conflict since those are channel-specific.
@@ -67,14 +65,12 @@ The MATLAB client (`mip install <package>`) fetches the index from GitHub Pages 
 
 ## Using this channel in MATLAB
 
-Channel names map to index URLs by convention: a channel named `foo` resolves to `https://mip-org.github.io/mip-foo/index.json`.
+Channels are specified as `gh_user/ch_name`, which maps to the repo `https://github.com/gh_user/mip-ch_name`.
 
 ```matlab
 % Install a package from your channel
-mip install --channel <channel_name> <package_name>
+mip install --channel gh_user/ch_name <package_name>
 
 % List available packages on your channel
-mip avail --channel <channel_name>
+mip avail --channel gh_user/ch_name
 ```
-
-For channels hosted outside the `mip-org` GitHub organization, users would need to point at the GitHub Pages URL directly (see [mip-package-manager](https://github.com/mip-org/mip-package-manager) for details).
