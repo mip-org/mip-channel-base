@@ -16,7 +16,7 @@ import os
 import sys
 import subprocess
 import argparse
-from channel_config import load_channel_config, release_tag_from_mhl, is_channel_configured
+from channel_config import get_github_repo, release_tag_from_mhl
 
 
 class PackageUploader:
@@ -31,8 +31,7 @@ class PackageUploader:
             input_dir: Directory containing .mhl files (default: build/bundled)
         """
         self.dry_run = dry_run
-        channel_cfg = load_channel_config()
-        self.github_repo = channel_cfg['github_repo']
+        self.github_repo = get_github_repo()
 
         # Set input directory
         if input_dir:
@@ -166,10 +165,6 @@ def main():
     )
 
     args = parser.parse_args()
-
-    if not is_channel_configured():
-        print("channel.yaml has not been configured yet. Skipping upload.")
-        return 0
 
     uploader = PackageUploader(
         dry_run=args.dry_run,

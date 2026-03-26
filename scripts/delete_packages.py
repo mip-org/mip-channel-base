@@ -27,11 +27,9 @@ import sys
 import json
 import subprocess
 import argparse
-from channel_config import load_channel_config, release_tag_from_mhl, is_channel_configured
+from channel_config import get_github_repo, release_tag_from_mhl
 
-
-channel_cfg = load_channel_config()
-GITHUB_REPO = channel_cfg['github_repo']
+GITHUB_REPO = get_github_repo()
 
 
 def list_all_releases():
@@ -109,10 +107,6 @@ def main():
     if not args.list and not args.pattern and not args.delete_release:
         parser.print_help()
         return 1
-
-    if not is_channel_configured():
-        print("channel.yaml has not been configured yet. Skipping.")
-        return 0
 
     try:
         release_tags = list_all_releases()

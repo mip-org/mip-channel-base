@@ -20,7 +20,7 @@ import argparse
 import subprocess
 import tempfile
 from datetime import datetime
-from channel_config import load_channel_config, get_base_url, is_channel_configured
+from channel_config import get_github_repo, get_base_url
 
 
 def _version_sort_key(version_str):
@@ -51,8 +51,7 @@ class IndexAssembler:
             dry_run: If True, simulate operations without actual downloading
         """
         self.dry_run = dry_run
-        channel_cfg = load_channel_config()
-        self.github_repo = channel_cfg['github_repo']
+        self.github_repo = get_github_repo()
 
     def _list_all_releases(self):
         """
@@ -361,8 +360,9 @@ class IndexAssembler:
 
             print(f"✓ Created packages.html")
             print(f"  Saved to: {packages_html_path}")
-            channel_name = load_channel_config()['channel']
-            print(f"  Will be available at: https://mip-org.github.io/mip-{channel_name}/packages.html")
+            repo_name = get_github_repo().split('/')[-1]
+            owner = get_github_repo().split('/')[0]
+            print(f"  Will be available at: https://{owner}.github.io/{repo_name}/packages.html")
 
             return True
 
@@ -385,10 +385,6 @@ def main():
     )
 
     args = parser.parse_args()
-
-    if not is_channel_configured():
-        print("channel.yaml has not been configured yet. Skipping index assembly.")
-        return 0
 
     assembler = IndexAssembler(dry_run=args.dry_run)
 

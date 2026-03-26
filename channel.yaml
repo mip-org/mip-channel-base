@@ -1,8 +1,0 @@
-# Channel configuration — update this after forking.
-#
-# channel:     A short name for your channel (e.g., "mylab")
-# github_repo: The GitHub owner/repo where this channel lives
-#              (used to upload/download package assets from GitHub Releases)
-
-channel: CHANGE_ME
-github_repo: OWNER/REPO

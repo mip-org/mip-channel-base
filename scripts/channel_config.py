@@ -1,30 +1,46 @@
-"""Load channel configuration from channel.yaml."""
+"""Channel configuration helpers.
+
+Derives the GitHub repo from the environment ($GITHUB_REPOSITORY in CI)
+or from the git remote origin URL.  No configuration file needed.
+"""
 
 import os
-import yaml
+import subprocess
 
 
-def load_channel_config():
-    """Load channel.yaml from the project root.
+def get_github_repo():
+    """Return the GitHub owner/repo string (e.g. 'mip-org/mip-example').
 
-    Returns a dict with keys: channel, github_repo.
+    Resolution order:
+      1. $GITHUB_REPOSITORY  (always set in GitHub Actions)
+      2. Parse the 'origin' remote URL via git
     """
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    config_path = os.path.join(project_root, 'channel.yaml')
-    with open(config_path, 'r') as f:
-        return yaml.safe_load(f)
+    repo = os.environ.get('GITHUB_REPOSITORY')
+    if repo:
+        return repo
 
-
-def is_channel_configured():
-    """Check whether channel.yaml has been configured (not still placeholders)."""
-    cfg = load_channel_config()
-    return cfg.get('github_repo') not in (None, 'OWNER/REPO')
+    # Fallback: parse git remote
+    result = subprocess.run(
+        ['git', 'remote', 'get-url', 'origin'],
+        capture_output=True, text=True, check=True
+    )
+    url = result.stdout.strip()
+    # Handle both HTTPS and SSH URLs
+    # https://github.com/owner/repo.git  ->  owner/repo
+    # git@github.com:owner/repo.git      ->  owner/repo
+    if url.endswith('.git'):
+        url = url[:-4]
+    if '://' in url:
+        # HTTPS
+        return '/'.join(url.split('/')[-2:])
+    else:
+        # SSH  (git@github.com:owner/repo)
+        return url.split(':')[-1]
 
 
 def get_base_url(release_tag):
     """Get the download base URL for a given release tag (name-version)."""
-    cfg = load_channel_config()
-    return f"https://github.com/{cfg['github_repo']}/releases/download/{release_tag}"
+    return f"https://github.com/{get_github_repo()}/releases/download/{release_tag}"
 
 
 def release_tag_from_mhl(mhl_filename):

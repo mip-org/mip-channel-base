@@ -6,9 +6,8 @@ This repo is a [MIP](https://mip.sh) package channel. It hosts MATLAB packages a
 
 1. **Create from template** — click "Use this template" on [mip-org/mip-channel-template](https://github.com/mip-org/mip-channel-template) and name the new repo `mip-<channel_name>` (e.g., `mip-mylab`). The repo name must match the channel name.
 2. **Enable GitHub Pages** — go to Settings > Pages and set source to "GitHub Actions".
-4. **Edit `channel.yaml`** — set `channel` to your channel name and `github_repo` to your `owner/mip-<channel_name>`.
-5. **Add packages** — create directories under `packages/` (see below).
-6. **Push to `main`** — the CI workflow will build, upload, and index your packages automatically.
+3. **Add packages** — create directories under `packages/` (see below).
+4. **Push to `main`** — the CI workflow will build, upload, and index your packages automatically.
 
 ## Adding a package
 
@@ -51,7 +50,7 @@ git fetch base
 git merge base/main --allow-unrelated-histories
 ```
 
-The `--allow-unrelated-histories` flag is needed because template repos don't share git history with the base. Your `channel.yaml` and `packages/` won't conflict since those are channel-specific.
+The `--allow-unrelated-histories` flag is needed because template repos don't share git history with the base. Your `packages/` directory won't conflict since that's channel-specific.
 
 ## How it works
 
