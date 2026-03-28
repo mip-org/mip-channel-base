@@ -52,7 +52,7 @@ def download_and_extract_zip(url: str, destination: str):
     os.remove(download_file)
 
 
-def clone_git_repository(url: str, destination: str, subdirectory: str | None = None):
+def clone_git_repository(url: str, destination: str, subdirectory: str | None = None, branch: str | None = None):
     """
     Clone a git repository and remove .git directories.
 
@@ -60,13 +60,16 @@ def clone_git_repository(url: str, destination: str, subdirectory: str | None = 
         url: The URL of the git repository to clone
         destination: The directory name to clone into
         subdirectory: If specified, only copy this subdirectory from the repo
+        branch: If specified, clone this branch or tag (passed as --branch to git clone)
     """
+    branch_args = ["--branch", branch] if branch else []
     if subdirectory:
         # Clone to a temp directory, then copy only the subdirectory
         temp_clone_dir = destination + "_temp_clone"
-        print(f'  Cloning {url} (subdirectory: {subdirectory})...')
+        branch_info = f", branch: {branch}" if branch else ""
+        print(f'  Cloning {url} (subdirectory: {subdirectory}{branch_info})...')
         subprocess.run(
-            ["git", "clone", url, temp_clone_dir],
+            ["git", "clone"] + branch_args + [url, temp_clone_dir],
             check=True,
             capture_output=True
         )
@@ -77,9 +80,10 @@ def clone_git_repository(url: str, destination: str, subdirectory: str | None = 
         shutil.copytree(subdir_path, destination)
         shutil.rmtree(temp_clone_dir)
     else:
-        print(f'  Cloning {url}...')
+        branch_info = f" (branch: {branch})" if branch else ""
+        print(f'  Cloning {url}{branch_info}...')
         subprocess.run(
-            ["git", "clone", url, destination],
+            ["git", "clone"] + branch_args + [url, destination],
             check=True,
             capture_output=True
         )
@@ -91,6 +95,34 @@ def clone_git_repository(url: str, destination: str, subdirectory: str | None = 
             git_dir = os.path.join(root, ".git")
             shutil.rmtree(git_dir)
             dirs.remove(".git")
+
+
+def resolve_git_commit_hash(url: str, ref: str) -> str:
+    """
+    Resolve a branch or tag to its commit hash using git ls-remote.
+
+    Args:
+        url: Git repository URL
+        ref: Branch or tag name
+
+    Returns:
+        The commit hash string
+
+    Raises:
+        RuntimeError: If the ref cannot be resolved
+    """
+    try:
+        result = subprocess.run(
+            ["git", "ls-remote", url, ref],
+            check=True, capture_output=True, text=True
+        )
+        for line in result.stdout.strip().splitlines():
+            commit_hash, remote_ref = line.split('\t', 1)
+            if remote_ref in (f"refs/heads/{ref}", f"refs/tags/{ref}", ref):
+                return commit_hash
+        raise RuntimeError(f"Could not resolve ref '{ref}' for {url}")
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"git ls-remote failed for {url} {ref}: {e}") from e
 
 
 def normalize_prepare_sources(prepare_config) -> List[Dict[str, Any]]:
@@ -391,7 +423,7 @@ class PackagePreparer:
                     download_and_extract_zip(config['url'], config['destination'])
                 elif 'clone_git' in source:
                     config = source['clone_git']
-                    clone_git_repository(config['url'], config['destination'], config.get('subdirectory'))
+                    clone_git_repository(config['url'], config['destination'], config.get('subdirectory'), config.get('branch'))
                     # Remove specified directories after cloning
                     for dir_name in config.get('remove_dirs', []):
                         dir_path = os.path.join(config['destination'], dir_name)
@@ -564,6 +596,27 @@ class PackagePreparer:
             # Compute source hash for the release folder
             print(f"  Computing source hash for {release_folder_path}...")
             source_hash = compute_directory_hash(release_folder_path)
+
+            # Resolve remote commit hashes for branch-based git sources
+            # so that changes on the remote branch trigger rebuilds
+            remote_commit_hashes = []
+            prepare_sources = normalize_prepare_sources(defaults.get('prepare'))
+            for source in prepare_sources:
+                if 'clone_git' in source:
+                    config = source['clone_git']
+                    branch = config.get('branch')
+                    if branch:
+                        commit_hash = resolve_git_commit_hash(config['url'], branch)
+                        print(f"  Resolved {config['url']} {branch} -> {commit_hash[:12]}")
+                        remote_commit_hashes.append(commit_hash)
+
+            if remote_commit_hashes:
+                combined = hashlib.sha1()
+                combined.update(source_hash.encode('utf-8'))
+                for ch in sorted(remote_commit_hashes):
+                    combined.update(ch.encode('utf-8'))
+                source_hash = combined.hexdigest()
+
             print(f"  Source hash: {source_hash}")
 
             # Process each matching (build, architecture) pair
