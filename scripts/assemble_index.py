@@ -32,11 +32,12 @@ def _version_sort_key(version_str):
 
 
 def _package_sort_key(pkg):
-    """Sort key for packages: by name (case-insensitive), then version, then architecture."""
+    """Sort key for packages: by name (case-insensitive), then version, then architecture, then cpu_level."""
     return (
         pkg.get('name', '').lower(),
         _version_sort_key(pkg.get('version', '0')),
         pkg.get('architecture', ''),
+        pkg.get('cpu_level', ''),
     )
 
 
@@ -247,7 +248,10 @@ class IndexAssembler:
                     name_cell = escape(name)
 
                 architecture = pkg.get('architecture', 'any')
+                cpu_level = pkg.get('cpu_level', '')
                 platform_info = f"architecture={architecture}"
+                if cpu_level:
+                    platform_info += f", cpu_level={cpu_level}"
 
                 download_links = []
                 if mhl_url:

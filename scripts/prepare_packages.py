@@ -25,6 +25,7 @@ import argparse
 import requests
 import yaml
 from channel_config import get_github_repo, get_base_url, release_tag_from_mhl
+from build_targets import CPU_LEVELS, is_simd_architecture, get_compiler_env
 
 
 def _rmtree_on_error(func, path, exc_info):
@@ -350,58 +351,111 @@ class PackagePreparer:
             else:
                 effective_arch = 'any'
 
-            # Build the .mhl filename for cache check
             version = mip_yaml.get('version', release_version)
-            mhl_filename = (f"{mip_yaml['name']}-{version}-"
-                            f"{effective_arch}.mhl")
 
-            # Check cache
-            if not self.force and check_existing_package(
-                    mhl_filename, source_hash, mip_yaml):
-                print(f"  Skipping - package already up to date")
-                continue
+            # Determine CPU level variants to build
+            use_simd = (recipe.get('simd', False)
+                        and is_simd_architecture(self.architecture))
+            cpu_levels = list(CPU_LEVELS) if use_simd else [None]
 
-            if self.dry_run:
-                print(f"  [DRY RUN] Would prepare {package_name}")
-                continue
-
-            # Create output directory: build/prepared/{name}-{version}/
-            output_name = f"{mip_yaml['name']}-{version}"
-            output_path = os.path.join(self.output_dir, output_name)
-
-            if os.path.exists(output_path):
-                shutil.rmtree(output_path, onerror=_rmtree_on_error)
-            os.makedirs(output_path)
-
-            try:
-                # Fetch source into output directory
-                self._fetch_source(recipe, output_path)
-                # Overlay channel files
-                overlay_channel_files(release_folder, output_path)
-
-                # Write source_hash for mip bundle to include in mip.json
-                hash_file = os.path.join(output_path, '.source_hash')
-                with open(hash_file, 'w') as f:
-                    f.write(source_hash)
-
-                # Write raw git commit hash if available
-                if remote_hashes:
-                    commit_hash_file = os.path.join(
-                        output_path, '.commit_hash')
-                    with open(commit_hash_file, 'w') as f:
-                        f.write(remote_hashes[0])
-
-                print(f"  Prepared: {output_path}")
-
-            except Exception as e:
-                print(f"  Error preparing package: {e}")
-                import traceback
-                traceback.print_exc()
-                if os.path.exists(output_path):
-                    shutil.rmtree(output_path, onerror=_rmtree_on_error)
-                return False
+            # For SIMD packages, clone source once and copy for each variant
+            # to avoid redundant git clones.
+            first_prepared_path = None
+            for cpu_level in cpu_levels:
+                ok = self._prepare_variant(
+                    recipe=recipe,
+                    release_folder=release_folder,
+                    mip_yaml=mip_yaml,
+                    effective_arch=effective_arch,
+                    version=version,
+                    source_hash=source_hash,
+                    remote_hashes=remote_hashes,
+                    cpu_level=cpu_level,
+                    copy_from=first_prepared_path,
+                )
+                if not ok:
+                    return False
+                # After the first successful variant, record its path
+                # so subsequent variants can copy instead of cloning.
+                if first_prepared_path is None and not self.dry_run:
+                    suffix = f"-{cpu_level}" if cpu_level else ""
+                    first_prepared_path = os.path.join(
+                        self.output_dir,
+                        f"{mip_yaml['name']}-{version}{suffix}")
+                    if not os.path.isdir(first_prepared_path):
+                        first_prepared_path = None
 
         return True
+
+    def _prepare_variant(self, *, recipe, release_folder, mip_yaml,
+                         effective_arch, version, source_hash,
+                         remote_hashes, cpu_level, copy_from=None):
+        """Prepare one variant (one cpu_level or None for non-SIMD).
+
+        When copy_from is set, copies that directory instead of cloning
+        the source again — avoids redundant git clones for SIMD variants.
+        """
+        name = mip_yaml['name']
+
+        # Build .mhl filename (with optional cpu_level suffix)
+        if cpu_level:
+            mhl_filename = f"{name}-{version}-{effective_arch}-{cpu_level}.mhl"
+            output_name = f"{name}-{version}-{cpu_level}"
+            print(f"  Variant: {effective_arch} / {cpu_level}")
+        else:
+            mhl_filename = f"{name}-{version}-{effective_arch}.mhl"
+            output_name = f"{name}-{version}"
+
+        # Check cache
+        if not self.force and check_existing_package(
+                mhl_filename, source_hash, mip_yaml):
+            print(f"  Skipping - package already up to date")
+            return True
+
+        if self.dry_run:
+            print(f"  [DRY RUN] Would prepare {output_name}")
+            return True
+
+        output_path = os.path.join(self.output_dir, output_name)
+        if os.path.exists(output_path):
+            shutil.rmtree(output_path, onerror=_rmtree_on_error)
+
+        try:
+            if copy_from and os.path.isdir(copy_from):
+                print(f"  Copying from {os.path.basename(copy_from)}...")
+                shutil.copytree(copy_from, output_path)
+            else:
+                os.makedirs(output_path)
+                self._fetch_source(recipe, output_path)
+                overlay_channel_files(release_folder, output_path)
+
+            # Write source_hash
+            with open(os.path.join(output_path, '.source_hash'), 'w') as f:
+                f.write(source_hash)
+
+            # Write raw git commit hash if available
+            if remote_hashes:
+                with open(os.path.join(output_path, '.commit_hash'), 'w') as f:
+                    f.write(remote_hashes[0])
+
+            # Write SIMD metadata for bundle_packages.m
+            if cpu_level:
+                with open(os.path.join(output_path, '.cpu_level'), 'w') as f:
+                    f.write(cpu_level)
+                compiler_env = get_compiler_env(effective_arch, cpu_level)
+                with open(os.path.join(output_path, '.compiler_env'), 'w') as f:
+                    json.dump(compiler_env, f, indent=2)
+
+            print(f"  Prepared: {output_path}")
+            return True
+
+        except Exception as e:
+            print(f"  Error preparing package: {e}")
+            import traceback
+            traceback.print_exc()
+            if os.path.exists(output_path):
+                shutil.rmtree(output_path, onerror=_rmtree_on_error)
+            return False
 
     def prepare_all(self):
         """Prepare all packages."""
