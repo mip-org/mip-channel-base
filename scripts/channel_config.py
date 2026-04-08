@@ -41,10 +41,13 @@ def get_base_url(release_tag):
 def release_tag_from_mhl(mhl_filename):
     """Extract the release tag (name-version) from an .mhl filename.
 
-    Filename format: {name}-{version}-{architecture}.mhl
-    Package names use underscores, never hyphens, so the first hyphen
-    separates name from version, and the last hyphen separates version
-    from architecture.
+    Filename formats:
+      {name}-{version}-{architecture}.mhl
+      {name}-{version}-{architecture}-{cpu_level}.mhl
+
+    Package names use underscores (never hyphens) and versions use dots,
+    so hyphens appear only as segment delimiters.  The first two segments
+    are always name and version.
     """
     basename = mhl_filename
     if basename.endswith('.mip.json'):
@@ -52,8 +55,7 @@ def release_tag_from_mhl(mhl_filename):
     if basename.endswith('.mhl'):
         basename = basename[:-4]
 
-    # Split on last hyphen to get architecture, rest is name-version
-    last_hyphen = basename.rfind('-')
-    if last_hyphen == -1:
+    parts = basename.split('-')
+    if len(parts) < 2:
         return basename
-    return basename[:last_hyphen]
+    return '-'.join(parts[:2])
