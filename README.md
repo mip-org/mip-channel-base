@@ -30,7 +30,22 @@ source:
   branch: "main"              # optional
   subdirectory: "matlab"      # optional: extract specific subdir
   remove_dirs: [tests, docs]  # optional: remove after clone
+
+simd: true                    # optional: build x86_64 v1-v4 SIMD variants
 ```
+
+#### SIMD support
+
+Packages with `simd: true` are compiled once per x86_64 microarchitecture level (v1 through v4) on Linux and Windows. At install time, `mip` detects the host CPU and picks the fastest compatible variant.
+
+| Level | GCC flag | MSVC flag | Features |
+|-------|----------|-----------|----------|
+| v1 | `-march=x86-64` | `/arch:SSE2` | Baseline |
+| v2 | `-march=x86-64-v2` | `/arch:SSE4.2` | SSE4.2, SSSE3, POPCNT |
+| v3 | `-march=x86-64-v3` | `/arch:AVX2` | AVX2, FMA, BMI1/2 |
+| v4 | `-march=x86-64-v4` | `/arch:AVX512` | AVX-512F/BW/CD/DQ/VL |
+
+Packages without `simd: true` (the default) are built once per platform as before. macOS builds are unaffected — SIMD variants are only produced for `linux_x86_64` and `windows_x86_64`.
 
 ### mip.yaml — package metadata
 
