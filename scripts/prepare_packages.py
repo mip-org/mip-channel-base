@@ -15,6 +15,7 @@ The prepared directories each contain a mip.yaml and are ready for
 """
 
 import os
+import re
 import sys
 import stat
 import json
@@ -25,6 +26,16 @@ import argparse
 import requests
 import yaml
 from channel_config import get_github_repo, get_base_url, release_tag_from_mhl
+
+
+# Canonical package name: lowercase letters, digits, hyphens, and
+# underscores; must start and end with a letter or digit. Must be kept
+# in sync with MATLAB's mip.name.is_canonical.
+CANONICAL_NAME_RE = re.compile(r'^[a-z0-9]([-a-z0-9_]*[a-z0-9])?$')
+
+
+def is_canonical_name(name):
+    return bool(CANONICAL_NAME_RE.match(name or ''))
 
 
 def _rmtree_on_error(func, path, exc_info):
@@ -263,8 +274,12 @@ class PackagePreparer:
         package_name = os.path.basename(package_dir)
         print(f"\nProcessing package: {package_name}")
 
-        if package_name != package_name.lower():
-            print(f"  Error: Package name must be lowercase.")
+        if not is_canonical_name(package_name):
+            print(f"  Error: Package directory name '{package_name}' is not "
+                  f"a valid canonical package name. Canonical names must "
+                  f"consist of lowercase letters, digits, hyphens, and "
+                  f"underscores, and must start and end with a letter or "
+                  f"digit.")
             return False
 
         for release_version in sorted(os.listdir(package_dir)):
@@ -332,6 +347,16 @@ class PackagePreparer:
             finally:
                 if os.path.exists(temp_dir):
                     shutil.rmtree(temp_dir, onerror=_rmtree_on_error)
+
+            yaml_name = mip_yaml.get('name', '')
+            if not is_canonical_name(yaml_name):
+                print(f"  Error: mip.yaml 'name' field value '{yaml_name}' "
+                      f"is not a valid canonical package name.")
+                return False
+            if yaml_name != package_name:
+                print(f"  Error: mip.yaml 'name' field '{yaml_name}' does "
+                      f"not match package directory '{package_name}'.")
+                return False
 
             # Check architecture match
             arch_matches = self.architecture in archs
