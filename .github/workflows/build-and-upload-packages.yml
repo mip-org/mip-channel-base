@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+  schedule:
+    # Daily at 06:00 UTC. Picks up new commits on branch-pinned packages
+    # via the source-hash check in prepare_packages.py.
+    - cron: '0 6 * * *'
   workflow_dispatch:
     inputs:
       force:
