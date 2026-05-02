@@ -30,6 +30,10 @@ source:
   branch: "main"              # optional
   subdirectory: "matlab"      # optional: extract specific subdir
   remove_dirs: [tests, docs]  # optional: remove after clone
+
+# Optional: control daily auto-update of numeric versions (see below)
+auto_update: true             # default; set to false to opt out
+tag_pattern: "v{version}"     # optional override; usually inferred
 ```
 
 ### mip.yaml — package metadata
@@ -85,6 +89,32 @@ On every push to `main`, GitHub Actions:
 3. **Uploads** packages — stores `.mhl` files as GitHub Release assets
 4. **Assembles index** — collects metadata from all releases into `index.json`
 5. **Deploys** — publishes `index.json` and `packages.html` to GitHub Pages
+
+## Automatic version tracking
+
+A daily GitHub Actions workflow keeps the channel current with upstream:
+
+- **Branch packages** (e.g. `packages/foo/main/`) — the build workflow runs
+  on a daily cron and rebuilds whenever upstream's branch HEAD has advanced.
+  No directory changes are needed; new commits flow through to GitHub Release
+  assets automatically.
+- **Numeric versions** (e.g. `packages/chebfun/5.7.0/`) — a separate
+  `check-for-updates` workflow lists upstream tags, detects new numeric
+  versions higher than the highest existing dir, and opens a pull request
+  adding `packages/<name>/<new_version>/`. Merging the PR triggers a build.
+
+### Tag pattern resolution
+
+To map an upstream tag (e.g. `v5.8.0`) to a numeric version (`5.8.0`),
+the workflow tries, in order:
+
+1. `tag_pattern` field on the reference recipe, if set.
+2. Inference from the highest-numeric existing dir's `source.branch`
+   (e.g. dir `5.7.0` with `source.branch: v5.7.0` → pattern `v{version}`).
+3. Auto-detection from upstream tags (majority of `v`-prefixed vs bare).
+
+Set `auto_update: false` on the reference recipe to opt out of automatic
+PRs (e.g. for packages intentionally pinned to an old version).
 
 ## Using this channel in MATLAB
 

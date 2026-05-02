@@ -1,0 +1,58 @@
+name: Check for package version updates
+
+on:
+  schedule:
+    # Daily at 06:00 UTC, slightly offset from the build workflow.
+    - cron: '15 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install pyyaml packaging
+
+      - name: Check for new upstream versions
+        run: |
+          python scripts/check_for_updates.py \
+            --summary-file build/auto-update-summary.md
+        shell: bash
+
+      - name: Determine PR body
+        id: pr
+        run: |
+          if [ -s build/auto-update-summary.md ]; then
+            {
+              echo 'body<<__BODY_EOF__'
+              cat build/auto-update-summary.md
+              echo '__BODY_EOF__'
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo 'body=No new versions detected.' >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+
+      - name: Open or update pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: auto-update-versions
+          delete-branch: true
+          commit-message: "Auto-update: add new package versions"
+          title: "Auto-update: new package versions detected upstream"
+          body: ${{ steps.pr.outputs.body }}
+          add-paths: |
+            packages/**
